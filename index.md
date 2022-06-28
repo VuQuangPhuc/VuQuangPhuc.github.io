@@ -1,37 +1,41 @@
-## Welcome to GitHub Pages
+# Simulating Complex Physics with Graph Networks
 
-You can use the [editor on GitHub](https://github.com/VuQuangPhuc/VuQuangPhuc.github.io/edit/main/index.md) to maintain and preview the content for your website in Markdown files.
+## Introduction
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+Simulations are a large part of scientific computing.
+In fact, when looking application of the [largest supercomputers](https://en.wikipedia.org/wiki/TOP500), most of them are being used for the purpose of simulation in one way or another.
+Simulations of cells, nuclear reactions or even the spread of the corona virus are just some of the applications.
 
-### Markdown
+Physics simulations are one sub-section of these.
+Researchers are interested in how objects with complexx physics interact with each other.
+Most of these simulations are based on physical models.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+A new approch is to train Graph Networks to simulate complex physics simulations.
+This blog will explore why this approach is so suitable for this type as simulation as well as introduce a framework for using Graph Networks as described by DeepMind [1].
 
-```markdown
-Syntax highlighted code block
+## Why use deep learning at all?
 
-# Header 1
-## Header 2
-### Header 3
+To understand why we want to learn a simulation at all, we have to look at the drawbacks of traditional engineered simulators.
 
-- Bulleted
-- List
+1. Performance: Engineered simulators are expensive to run as they rely on huge amounts of calculations based on their physics models in order to produce high-quality results in high resolution. Learned simulators are able to learn the subgrid dynamics. Another part is the rise of purpose-build accelerator hardware for AI-based systems, which allows them to run more efficiently.
+2. Learn unknown physics: Engineered simulations rely on their physics model. This model requires full knowledge, which in most cases is not available. Learned simulations can compensate by learning unknown physics.
+3. Generalizability: Simulations can often be very specialized, Graph Networks can be build to scale to different use cases.
 
-1. Numbered
-2. List
+## Graph Networks
 
-**Bold** and _Italic_ and `Code` text
+![](/assets/graph_ex.png) 
 
-[Link](url) and ![Image](src)
-```
+A Graph Network (GN) is a type of Graph Neural Network that maps an input graphto an output graph with the same structure but potentially different node, edge, andgraph-level attributes.
+This is in contrast other types of neural networks.
+Convolutional Neural Networks take inputs in form of grids.
+Multilayer perceptrons take inputs in form of sequences.
 
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
+Graphs are, although also a structured data type, by nature less structured as they can take arbitrary shapes and sizes.
 
-### Jekyll Themes
+This works well for physics based simulations, in particular particle based simulations as particles can be directly mapped to nodes, which are connected via edges.
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/VuQuangPhuc/VuQuangPhuc.github.io/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+## Message passing
 
-### Support or Contact
+## References
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+[1] Sanchez-Gonzalez, A., Heess, N., Springenberg, J. T., Merel, J., Riedmiller, M.,Hadsell, R., & Battaglia, P. (2018). Graph networks as learnable physicsengines for inference and control. InInternational conference on machinelearning. PMLR.
