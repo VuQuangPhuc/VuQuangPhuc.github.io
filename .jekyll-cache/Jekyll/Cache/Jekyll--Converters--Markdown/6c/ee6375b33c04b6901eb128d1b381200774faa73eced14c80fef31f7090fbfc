@@ -1,0 +1,99 @@
+I"¼<h1 id="introduction">Introduction</h1>
+
+<p>Simulations are a large part of scientific computing.
+In fact, when looking application of the <a href="https://en.wikipedia.org/wiki/TOP500">largest supercomputers</a>, most of them are being used for the purpose of simulation in one way or another.
+Simulations of cells, nuclear reactions or even the spread of the corona virus are just some of the applications.</p>
+
+<p>Physics simulations are one sub-section of these.
+Researchers are interested in how objects with complex physics interact with each other.
+Most of these simulations are based on numercial solvers that use some kind of physics model.</p>
+
+<p>A new approch is to train Graph Networks to simulate complex physics simulations.
+This blog will explore why this approach is so suitable for this type as simulation as well as introduce a framework for using Graph Networks as described by DeepMind [1][2].</p>
+
+<h1 id="why-use-deep-learning-at-all">Why use deep learning at all?</h1>
+
+<p>To understand why we want to learn a simulation at all, we have to look at the drawbacks of traditional engineered simulators.</p>
+
+<ol>
+  <li>Performance: 
+Engineered simulators are expensive to run as they rely on huge amounts of calculations based on their physics models in order to produce high-quality results in high resolution.
+This requires the usage of 
+Learned simulators are able to learn the subgrid dynamics.</li>
+</ol>
+
+<p>Another part is the rise of purpose-build accelerator hardware for AI-based systems, which allows them to run more efficiently.</p>
+<ol>
+  <li>Learn unknown physics: Engineered simulations rely on their physics model. This model requires full knowledge, which in most cases is not available. Learned simulations can compensate by learning unknown physics.</li>
+  <li>Generalizability: Simulations can often be very specialized, Graph Networks can be build to scale to different use cases.</li>
+</ol>
+
+<h1 id="graph-networks">Graph Networks</h1>
+
+<p><img src="/assets/graph_ex.png" alt="" /></p>
+
+<p>A Graph Network (GN) is a type of Graph Neural Network that maps an input graphto an output graph with the same structure but potentially different node, edge, andgraph-level attributes.
+This is in contrast other types of neural networks.
+Convolutional Neural Networks take inputs in form of grids.
+Multilayer perceptrons take inputs in form of sequences.</p>
+
+<p>Graphs are, although also a structured data type, by nature less structured as they can take arbitrary shapes and sizes.</p>
+
+<p>This works well for physics based simulations, in particular particle based simulations as particles can be directly mapped to nodes, which are connected via edges.</p>
+
+<h1 id="message-passing">Message passing</h1>
+
+<p>The question is now is: how do we use these graph networks to learn?
+Most standard machine learning models rely on the assumption that data is independent and identically distributed.
+This is not the case with graphs, where nodes are interconnected.</p>
+
+<p>Instead models were created that directly operate on graphs and that are able to make use of graph properties.
+The model used in DeepMinds paper is based on the general architecture of a Message Passing Neural Network (MPNN).</p>
+
+<p><img src="/assets/graph_1.png" alt="" /></p>
+
+<p>The idea behind message passing is realtively simple.</p>
+
+<p>First we are given a Graph \(G = (u, \{v_i\}_{i = 1 \dots N_n}, \{e_j, s_j, r_j\}_{j = 1 \dots N_e})\).
+u is a vector of global features, \(\{v_i\}_{i = 1 \dots N_n}\) is a nodes where each \(v_i\) is a vector of node features and \(\{e_j, s_j, r_j\}_{j = 1 \dots N_e}\) is a set of directed edges where \(e_j\) is a vector of edge features, with \(s_j\) and \(r_j\) being the indices of the sender and receiver nodes.</p>
+
+<p>The message passing as used by DeepMind [1][2] consists of three phases.
+The first phase constructs messages for all nodes.</p>
+
+<p>For this we defined an edge function:</p>
+
+\[e'_k \leftarrow \phi^e (e_k, v_{r_k}, v_{s_k})\]
+
+<p>This edge function takes an edge and both the receiver and sender node as an input and outputs an updated feature vector for the edge.
+To construct a message \(\bar{e}'_i\) for the node \(i\), we aggregate other all edge functions where \(i\) is the receiver node.</p>
+
+\[\bar{e}'_i \leftarrow \sum_{r_k = i} e'_k\]
+
+<p>In the second phase we update the node features.</p>
+
+\[v'_i \leftarrow \phi^v (\bar{e}'_i, v_i)\]
+
+<p>Both the message and the old state of the node features are used as input for the node function that determines the updates node features.</p>
+
+<p>These two phases combine to be one message passing step and can be repeated an arbitrary amount of times before moving on to the third phase, that phase being the readout phase.
+Here we use the final state of the latent vectors as an input for another function that determines the final output of the graph network.</p>
+
+\[y = R(G*)\]
+
+<p>In this case DeepMind uses the graph network to predict accelerations of the particles.</p>
+
+<p>The edge function \(\phi^e\), the node function \(\phi^n\) and the readout function $R$ are all learned functions in this model.</p>
+
+<h1 id="inductive-biases">Inductive biases</h1>
+
+<p>Now that we now what graph networks are and how they function itâ€™s time to inspect why they are conducive to learning to simulating complex physics.
+For this we first need to explain what inductive biases are.</p>
+
+<p>The inductive bias, also known as learning bias, of a learning algorithm is the set of assumptions that the learner uses to predict outputs of given inputs that it has not encountered [3].</p>
+
+<h1 id="references">References</h1>
+
+<p>[1] Sanchez-Gonzalez, A., Heess, N., Springenberg, J. T., Merel, J., Riedmiller, M.,Hadsell, R., &amp; Battaglia, P. (2018). Graph networks as learnable physicsengines for inference and control. InInternational conference on machinelearning. PMLR.
+[2] Sanchez-Gonzalez, A., Godwin, J., Pfaff, T., Ying, R., Leskovec, J., &amp; Battaglia, P.. (2020). Learning to Simulate Complex Physics with Graph Networks. 
+[3] Battaglia, P. W., Hamrick, J. B., Bapst, V., Sanchez-Gonzalez, A., Zambaldi, V., Malinowski, M., Tacchetti, A., Raposo, D., Santoro, A., Faulkner, R., Et al. (2018). Relational inductive biases, deep learning, and graph networks. arXiv preprint arXiv:1806.01261.</p>
+:ET

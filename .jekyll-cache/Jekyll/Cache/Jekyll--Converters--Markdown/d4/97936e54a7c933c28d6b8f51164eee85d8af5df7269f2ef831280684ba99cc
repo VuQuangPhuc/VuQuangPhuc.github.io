@@ -1,0 +1,229 @@
+I"�;<h1 id="introduction">Introduction</h1>
+
+<p>Simulations are a large part of scientific computing.
+In fact, when looking application of the <a href="https://en.wikipedia.org/wiki/TOP500">largest supercomputers</a>, most of them are being used for the purpose of simulation in one way or another.
+Simulations of cells, nuclear reactions or even the spread of the corona virus are just some of the applications.</p>
+
+<p>Physics simulations are one sub-section of these.
+Researchers are interested in how objects with complex physics interact with each other.
+Most of these simulations are based on numercial solvers that use some kind of physics model.</p>
+
+<p>A new approch is to train Graph Networks to simulate complex physics simulations.
+This blog will explore why this approach is so suitable for this type as simulation as well as introduce a framework for using Graph Networks as described by DeepMind [1][2].</p>
+
+<h1 id="why-use-deep-learning-at-all">Why use deep learning at all?</h1>
+
+<p>To understand why we want to learn a simulation at all, we have to look at the drawbacks of traditional engineered simulators.</p>
+
+<ol>
+  <li>Performance: 
+Engineered simulators are expensive to run as they rely on huge amounts of calculations based on their physics models in order to produce high-quality results in high resolution.
+This requires the usage of 
+Learned simulators are able to learn the subgrid dynamics.</li>
+</ol>
+
+<p>Another part is the rise of purpose-build accelerator hardware for AI-based systems, which allows them to run more efficiently.</p>
+<ol>
+  <li>Learn unknown physics: Engineered simulations rely on their physics model. This model requires full knowledge, which in most cases is not available. Learned simulations can compensate by learning unknown physics.</li>
+  <li>Generalizability: Simulations can often be very specialized, Graph Networks can be build to scale to different use cases.</li>
+</ol>
+
+<h1 id="graph-networks">Graph Networks</h1>
+
+<p><img src="/assets/graph_ex.png" alt="" /></p>
+
+<p>A Graph Network (GN) is a type of Graph Neural Network (GNN) that maps an input graphto an output graph with the same structure but potentially different node, edge, andgraph-level attributes.
+This is in contrast other types of neural networks.
+Convolutional Neural Networks take inputs in form of grids.
+Multilayer perceptrons take inputs in form of sequences.</p>
+
+<p>Graphs are, although also a structured data type, by nature less structured as they can take arbitrary shapes and sizes.</p>
+
+<p>This works well for physics based simulations, in particular particle based simulations as particles can be directly mapped to nodes, which are connected via edges.</p>
+
+<h1 id="message-passing">Message passing</h1>
+
+<p>The question is now is: how do we use these graph networks to learn?
+Most standard machine learning models rely on the assumption that data is independent and identically distributed.
+This is not the case with graphs, where nodes are interconnected.</p>
+
+<p>Instead models were created that directly operate on graphs and that are able to make use of graph properties.
+The model used in DeepMinds paper is based on the general architecture of a Message Passing Neural Network (MPNN).</p>
+
+<p><img src="/assets/graph_1.png" alt="" /></p>
+
+<p>The idea behind message passing is realtively simple.</p>
+
+<p>First we are given a Graph \(G = (u, \{v_i\}_{i = 1 \dots N_n}, \{e_j, s_j, r_j\}_{j = 1 \dots N_e})\).
+u is a vector of global features, \(\{v_i\}_{i = 1 \dots N_n}\) is a nodes where each \(v_i\) is a vector of node features and \(\{e_j, s_j, r_j\}_{j = 1 \dots N_e}\) is a set of directed edges where \(e_j\) is a vector of edge features, with \(s_j\) and \(r_j\) being the indices of the sender and receiver nodes.</p>
+
+<p>The message passing as used by DeepMind [1][2] consists of three phases.
+The first phase constructs messages for all nodes.</p>
+
+<p>For this we defined an edge function:</p>
+
+\[e'_k \leftarrow \phi^e (e_k, v_{r_k}, v_{s_k})\]
+
+<p>This edge function takes an edge and both the receiver and sender node as an input and outputs an updated feature vector for the edge.
+The output \(e'_k\) is referred to as the message in the message passing algorithm.
+To pass the message we calculate aggregate \(\bar{e}'_i\) for the node \(i\), where we aggregate over all messages where \(i\) is the receiver node.</p>
+
+\[\bar{e}'_i \leftarrow \sum_{r_k = i} e'_k\]
+
+<p>In the second phase we update the node features.</p>
+
+\[v'_i \leftarrow \phi^v (\bar{e}'_i, v_i)\]
+
+<p>Both the message and the old state of the node features are used as input for the node function that determines the updates node features.</p>
+
+<p>These two phases combine to be one message passing step and can be repeated an arbitrary amount of times before moving on to the third phase, that phase being the readout phase.
+Here we use the final state of the latent vectors as an input for another function that determines the final output of the graph network.</p>
+
+\[y = R(G*)\]
+
+<p>In this case DeepMind extracts accelerations from modified graph.</p>
+
+<p>The edge function \(\phi^e\), the node function \(\phi^n\) and the readout function $R$ are all learned functions in this model.</p>
+
+<h1 id="inductive-biases">Inductive biases</h1>
+
+<p>Now that we now what graph networks are and how they function it’s time to inspect why they are conducive to learning to simulating complex physics.
+For this we first need to explain what inductive biases are.</p>
+
+<p>Per definition, the inductive bias, also known as learning bias, of a learning algorithm is the set of assumptions that the learner uses to predict outputs of given inputs that it has not encountered [3].
+In other words the inductive bias is something we give to our learning algorithm as a prior.
+Let’s look at the inductive biases DeepMind uses in their model in order to improve their model performance.</p>
+
+<h2 id="permutation-equivariance">Permutation equivariance.</h2>
+
+<p>When applying physics to a group of particles, they are permutation-equivariant, meaning they do not have a canonical order in which physics apply to them.
+If we look at other types of neural networks, we see that most of the time the order of inputs does matter.
+Taking a simple MLP for example we can determine that \(MLP(i_1, i_2, i_3)\) \(\neq\) \(MLP(i_1, i_3, i_2)\).</p>
+
+<p>Here is where the use of graph networks and the usage of message passing comes in.
+The key characteristic of GNNs it that they operate on graph, a data structure without inherent order.
+Additionally, if we look at the message passing algorithm we can see that the order that we update or nodes also does not matter.
+First we update all edges without modifying the node features that the edge function requires as an input.
+We than update all node features only using the old state and an aggregation of new edge features.</p>
+
+<h2 id="pairwise-interaction">Pairwise interaction</h2>
+
+<p>In physics many forces are defined as pairwise interactions between two objects.
+This is modeled by the edge function used to calculate the message \(e'_k \leftarrow \phi^e (e_k, v_{r_k}, v_{s_k})\).
+As we can see, the message itself is the product of taking the features of two nodes and the edge connecting them.
+In a way we can therefore think of pairwise interactions as an inductive bias that helps the model simulating real physics.</p>
+
+<h2 id="superposition-principle">Superposition principle</h2>
+
+<p>The same can be said of the edge aggregation step \(\bar{e}'_i \leftarrow \sum_{r_k = i} e'_k\).
+If we think of message as a force defined by the pairwise interaction, the aggregation of messages can be seen as the aggregation of forces.
+In physics this is also known as superposition principle, which allows us generally to simply add up forces.</p>
+
+<h2 id="local-interaction">Local interaction</h2>
+
+<p>The node function \(v'_i \leftarrow \phi^v (\bar{e}'_i, v_i)\) describes how a node is updated.
+As we can see, the node updated using only the old state and the state of its neighbors, modeling how interaction in physics generally only apply locally.</p>
+
+<h2 id="inertial-dynamics">Inertial dynamics</h2>
+
+<p>Another type of inductive prior that is used, is a prior for inertial dynamics.
+Inertia in itself is the property of an object to not change its velocity.</p>
+
+<p>We want predict the future position of particles.
+As such we could train our neural network to do just that using the current position and velocity:</p>
+
+\[x^{t+1} = NN(x^t, v^t)\]
+
+<p>The problem with this, is that the neural networks must now use capacity to learn how static and inertial motion work.
+The neural network above has to learn that usually the next position will be close to the last position.
+Instead, this knowledge could be given to the model by simply using an other formulation of the problem:</p>
+
+\[x^{t+1} = x^t + NN(x^t, v^t)\]
+
+<p>Using inertial dynamics into account we know that in absence of forces velocity will be constant instead of position.
+This prior also be given to the model by predicting a correction to the inertial trajectory:</p>
+
+\[x^{t+1} = x^t + \Delta t \cdot v^t + NN(x^t, v^t)\]
+
+<h2 id="spatial-equivariance">Spatial equivariance</h2>
+
+<p>One last inductive bias that the model uses is spatial equivariance.
+In physics the absolute position of objects does not really matter most of the time.
+If we were to apply some force on an objects, it should behave the same if the object were placed one meter to the right of its original position, all else being equal.
+This can be modeled by masking out the absolute positions of particles that are given as input the model, and instead converting the position to relative displacements between particles.
+Not only will this give a prior to our model, it will also the generalization of the model, as the model did not learn on absolute spation locations.</p>
+
+<h1 id="model-framework">Model Framework</h1>
+
+<p>Using this knowledge we can now look at the framework that DeepMind presents that packages all the knowledge above to learn simulating physics.</p>
+
+<p><img src="/assets/model_framework_full.png" alt="" /></p>
+
+<p>The simulator \(s_\theta\) consists of two parts, the dynamics component \(d_/theta\), that predicts the future state of the simulation, and the \(Update\) component, that updates the simulation state using the extracted information of the dynamics component.</p>
+
+<h2 id="the-encoder">The Encoder</h2>
+
+<p>The encoder is responsible for the data preprocessing.
+It’s a mapping \(X \rightarrow G\), that assigns each particle to a node and adds edges to the graph using a connectivity radius, which is one of the hyperparameter and reflects the local interaction prior.
+The input features of each particle are its absolute position, the previous five velocities and the particle type.
+It’s also the encoder’s job to mask these absolute positions and convert them into relative displacement between particles.
+The embedded features of nodes and edges are learned using MLPs.
+These MLPs, as with all other MLPs have two hidden layers with ReLU activations, followed by a non-activated output layer, with each layer being of size 128.</p>
+
+<h2 id="the-processor">The Processor</h2>
+
+<p>The processor consists of a stack of identical graph networks, with the number of graph networks also being a hyperparameter.
+Each graph network is responsible for one message passing step, consisting of updating all edges and nodes, and constructing an output graph \(G^{m+1}\).
+Again, MLPs are used as internal update functions.
+One of the things, that were tested was how having these graph networks share parameters would affect the performance of the model.</p>
+
+<h2 id="the-decoder">The Decoder</h2>
+
+<p>The decoder is used for the postprocessing of the data and extracts the dynamics information in form of accelerations.
+The decoder also a learned function using a MLP.</p>
+
+<p>The output of the decoder is then fed into the update component.
+Here an Euler integrator is used to calculate the future position and velocity of the particles from the extracted accelerations.</p>
+
+<h1 id="training">Training</h1>
+
+<p>For training randomly particle state pairs \((x_{i}^{t_k}, x_{i}^{t_{k+1}})\) were sampled from training trajectories.
+These were used to calculate the target accelerations \(\ddot{p}_{i}^{t_k}\).
+The \(L_2\) loss (MSE) was then calculated using these accelerations and the acceleartions predicted by the dynamics component of the simulator:</p>
+
+\[L(x_{i}^{t_k}, x_{i}^{t_{k+1}}; \theta) = || d_\theta (x_{i}^{t_k}) - \ddot{p}_{i}^{t_k} ||^{2},\]
+
+<p>with \(\theta\) being the model parameter that were optimized over this loss using the Adam optimizer.</p>
+
+<p>DeepMinds model was trained on ground-truth one-step data.
+In reality, using the model only for one-step predictions is obviously not feasible or useful.
+In order to model physics rollouts error accumulation has to be taken into account.</p>
+
+<p><img src="/assets/rollout.png" alt="" /></p>
+
+<p>During a rollout the model is fed with its own noisy, previous prediction as input.
+If the model was only trained on one-step data, it could be the case that this noisy data may be outside of the training distribution, in other words input that was never encountered during training.
+To make the model more resilient to noise, the distribution of input data generated during rollouts was observed.
+The ground-truth input that is used to train the model is then corrupted with noise so that the training distribution more closly resembles the distribution generated by rollouts, with the noise standard deviation being a hyperparameter.</p>
+
+<h1 id="results">Results</h1>
+
+<h2 id="prediction-vs-ground-truth">Prediction vs Ground Truth</h2>
+
+<p><img src="/assets/res1.png" alt="" /></p>
+
+<p>The image above shows how the learned simulator trained by DeepMind performs in various scenarios and with different materials.
+The purple material being goop, a viscous material, blue being water and yellow being sand.
+The first row depicts the initial state of the simulation, the second row the prediction of the simulator after a certain time and the third row showing the ground truth after the same time.</p>
+
+<p>Visually we can see that the prediction and the ground truth are visually very similar.
+We can infer that, at least for this data set, the simultor performs for several materials, even in the same scenario, and in more complex scenarios such as shown in column h.</p>
+
+<h1 id="references">References</h1>
+
+<p>[1] Sanchez-Gonzalez, A., Heess, N., Springenberg, J. T., Merel, J., Riedmiller, M.,Hadsell, R., &amp; Battaglia, P. (2018). Graph networks as learnable physicsengines for inference and control. InInternational conference on machinelearning. PMLR.</p>
+
+<p>[2] Sanchez-Gonzalez, A., Godwin, J., Pfaff, T., Ying, R., Leskovec, J., &amp; Battaglia, P.. (2020). Learning to Simulate Complex Physics with Graph Networks.</p>
+
+<p>[3] Battaglia, P. W., Hamrick, J. B., Bapst, V., Sanchez-Gonzalez, A., Zambaldi, V., Malinowski, M., Tacchetti, A., Raposo, D., Santoro, A., Faulkner, R., Et al. (2018). Relational inductive biases, deep learning, and graph networks. arXiv preprint arXiv:1806.01261.</p>
+:ET
