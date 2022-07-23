@@ -266,7 +266,7 @@ Visual comparisons can be found [here](https://sites.google.com/view/learning-to
 
 ## Comparisons to numerical simulators
 
-Though in all regards impressive the real test of learned simulators is of course against the classical simulators using numerical methods.
+Though in all regards impressive, the real test of learned simulators is of course against the classical simulators using numerical methods.
 Here, this type of learned simulators are yet to prove them self in real world applications.
 Tough it has to be noted, that DeepMinds framework and usage of graph networks can not only be used to simulate particles, but can also be applied both rigid bodies [1] as well as mesh-based simulations [4].
 In the later case it was stated that their mesh-based simulator was outperforming the classical solver in terms of efficiency.
@@ -287,7 +287,7 @@ This allows for the creation of a high-performance, high-quality particle based 
 
 DeepMind provides an [open source implementation](https://github.com/deepmind/deepmind-research/tree/master/learning_to_simulate) [5]of their model on their GitHub, which build using their [Graph Nets library](https://github.com/deepmind/graph_nets), which itself it build on top of their machine learning library [Sonnet](https://github.com/deepmind/sonnet) and TensorFlow.
 
-[This tutorial](https://medium.com/stanford-cs224w/simulating-complex-physics-with-graph-networks-step-by-step-177354cb9b05) also shows reimplementation of DeepMinds model using the Graph Neural Network library PyG.
+[This tutorial](https://medium.com/stanford-cs224w/simulating-complex-physics-with-graph-networks-step-by-step-177354cb9b05) also shows a reimplementation of DeepMinds model using the Graph Neural Network library PyG.
 
 # References
 
